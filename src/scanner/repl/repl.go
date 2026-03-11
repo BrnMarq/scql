@@ -20,10 +20,18 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
+		if line == "exit" || line == "\\q" {
+			fmt.Fprintln(out, "Goodbye!")
+			return
+		}
+
 		_, tokens := lexer.Lex("Lexer", line)
 
 		for token := range tokens {
-			fmt.Printf("%+v\n", token)
+			if token.Type == "EOF" {
+				break
+			}
+			fmt.Fprintf(out, "{Type: %-15s Literal: %q}\n", token.Type, token.Literal)
 		}
 	}
 }

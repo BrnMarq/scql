@@ -62,7 +62,9 @@ func lexStart(l *Lexer) stateFn {
 		case r == ')':
 			l.emit(token.RPAREN)
 		case r == '\'':
-			return lexString
+			return lexString('\'')
+		case r == '"':
+			return lexString('"')
 		default:
 			if unicode.IsLetter(r) || r == '_' {
 				l.backup()
@@ -70,6 +72,8 @@ func lexStart(l *Lexer) stateFn {
 			} else if unicode.IsDigit(r) {
 				l.backup()
 				return lexNumber
+			} else {
+				return l.errorf("illegal character %#U", r)
 			}
 		}
 	}
@@ -84,13 +88,16 @@ func lexComment(l *Lexer) stateFn {
 
 func lexBlockComment(l *Lexer) stateFn {
 	counter := 1
-	for r := l.next(); counter > 0; r = l.next() {
+	for counter > 0 {
+		r := l.next()
 		if r == '/' {
 			if l.peek() == '*' {
+				l.next() // consume '*'
 				counter += 1
 			}
 		} else if r == '*' {
 			if l.peek() == '/' {
+				l.next() // consume '/'
 				counter -= 1
 			}
 		} else if r == eof {
@@ -101,14 +108,16 @@ func lexBlockComment(l *Lexer) stateFn {
 	return lexStart
 }
 
-func lexString(l *Lexer) stateFn {
-	for r := l.next(); r != '\''; r = l.next() {
-		if r == eof {
-			return l.errorf("Missing closing double quotes on string")
+func lexString(quote rune) stateFn {
+	return func(l *Lexer) stateFn {
+		for r := l.next(); r != quote; r = l.next() {
+			if r == eof {
+				return l.errorf("Missing closing quote on string")
+			}
 		}
+		l.emit(token.STRING)
+		return lexStart
 	}
-	l.emit(token.STRING)
-	return lexStart
 }
 
 func lexLetter(l *Lexer) stateFn {
@@ -123,8 +132,6 @@ func lexLetter(l *Lexer) stateFn {
 
 func lexNumber(l *Lexer) stateFn {
 	isFloat := false
-	// Optional leading sign.
-	l.accept("+~")
 	digits := "0123456789"
 	l.acceptRun(digits)
 	if l.accept(".") {

@@ -5,175 +5,92 @@ import (
 	"testing"
 )
 
-func TestNextToken(t *testing.T) {
-	input := `val x = 5
-val y = 10
-val f = fn x => x + 10
-val s = "string"
-val c = #"c"
-val b = true
-val bf = false
-val u = ()
-val r = 3.14
-val n = ~5
-[1, 2]
-(1, 2)
-1 :: 2
-x : int
-[1] @ [2]
-1 + 2 * 3 / 4 div 5 mod 6 ^ 7
-x = y
-x <> y
-x < y
-x > y
-x <= y
-x >= y
-x andalso y
-x orelse y
-not x
-if x then y else z
-fun add a b = a + b
-case x of
-  | 1 => "one"
-  | _ => "other"
-`
+func TestLexer_NextToken(t *testing.T) {
+	input := `SELECT * FROM "www.example.com"` + "\n" +
+		`WHERE class = 'title' AND id != 5 OR price <= 10.5` + "\n" +
+		`SET a = TRUE, b = FALSE, c = NULL` + "\n" +
+		`ORDER BY price ASC, name DESC` + "\n" +
+		`AUTHENTICATE AT "auth.com" SUBMIT FORM WITH (user="admin", pass='1234')` + "\n" +
+		`-- this is a line comment` + "\n" +
+		`/* this is a /* nested */ block comment */` + "\n" +
+		`! * / + - < > <= >= != = . ; , ( )` + "\n" +
+		`123 45.67 _ident123`
 
 	tests := []struct {
 		expectedType    token.TokenType
 		expectedLiteral string
 	}{
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "x"},
-		{token.EQUAL, "="},
-		{token.INTEGER, "5"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "y"},
-		{token.EQUAL, "="},
-		{token.INTEGER, "10"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "f"},
-		{token.EQUAL, "="},
-		{token.IDENTIFIER, "fn"}, // fn is not a keyword in token.go, so it's an ident
-		{token.IDENTIFIER, "x"},
-		{token.DOUBLE_ARROW, "=>"},
-		{token.IDENTIFIER, "x"},
-		{token.PLUS, "+"},
-		{token.INTEGER, "10"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "s"},
-		{token.EQUAL, "="},
-		{token.STRING, "\"string\""},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "c"},
-		{token.EQUAL, "="},
-		{token.CHAR, "#\"c\""},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "b"},
-		{token.EQUAL, "="},
-		{token.BOOL, "true"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "bf"},
-		{token.EQUAL, "="},
-		{token.BOOL, "false"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "u"},
-		{token.EQUAL, "="},
-		{token.UNIT, "()"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "r"},
-		{token.EQUAL, "="},
-		{token.REAL, "3.14"},
-		{token.VAL, "val"},
-		{token.IDENTIFIER, "n"},
-		{token.EQUAL, "="},
-		{token.INTEGER, "~5"},
-		{token.LBRACKET, "["},
-		{token.INTEGER, "1"},
-		{token.COMMA, ","},
-		{token.INTEGER, "2"},
-		{token.RBRACKET, "]"},
-		{token.LPAREN, "("},
-		{token.INTEGER, "1"},
-		{token.COMMA, ","},
-		{token.INTEGER, "2"},
-		{token.RPAREN, ")"},
-		{token.INTEGER, "1"},
-		{token.DOUBLE_COLON, "::"},
-		{token.INTEGER, "2"},
-		{token.IDENTIFIER, "x"},
-		{token.COLON, ":"},
-		{token.IDENTIFIER, "int"},
-		{token.LBRACKET, "["},
-		{token.INTEGER, "1"},
-		{token.RBRACKET, "]"},
-		{token.AT, "@"},
-		{token.LBRACKET, "["},
-		{token.INTEGER, "2"},
-		{token.RBRACKET, "]"},
-		{token.INTEGER, "1"},
-		{token.PLUS, "+"},
-		{token.INTEGER, "2"},
+		{token.SELECT, "SELECT"},
 		{token.ASTERISK, "*"},
-		{token.INTEGER, "3"},
-		{token.SLASH, "/"},
-		{token.INTEGER, "4"},
-		{token.DIVISION, "div"},
-		{token.INTEGER, "5"},
-		{token.MODULO, "mod"},
-		{token.INTEGER, "6"},
-		{token.CARET, "^"},
-		{token.INTEGER, "7"},
-		{token.IDENTIFIER, "x"},
-		{token.EQUAL, "="},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.NOT_EQUAL, "<>"},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.LT, "<"},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.GT, ">"},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
+		{token.FROM, "FROM"},
+		{token.STRING, "\"www.example.com\""},
+		{token.WHERE, "WHERE"},
+		{token.IDENT, "class"},
+		{token.EQ, "="},
+		{token.STRING, "'title'"},
+		{token.AND, "AND"},
+		{token.IDENT, "id"},
+		{token.NOT_EQ, "!="},
+		{token.INT, "5"},
+		{token.OR, "OR"},
+		{token.IDENT, "price"},
 		{token.LTE, "<="},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.GTE, ">="},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.ANDALSO, "andalso"},
-		{token.IDENTIFIER, "y"},
-		{token.IDENTIFIER, "x"},
-		{token.ORELSE, "orelse"},
-		{token.IDENTIFIER, "y"},
-		{token.NOT, "not"},
-		{token.IDENTIFIER, "x"},
-		{token.IF, "if"},
-		{token.IDENTIFIER, "x"},
-		{token.THEN, "then"},
-		{token.IDENTIFIER, "y"},
-		{token.ELSE, "else"},
-		{token.IDENTIFIER, "z"},
-		{token.FUN, "fun"},
-		{token.IDENTIFIER, "add"},
-		{token.IDENTIFIER, "a"},
-		{token.IDENTIFIER, "b"},
-		{token.EQUAL, "="},
-		{token.IDENTIFIER, "a"},
+		{token.FLOAT, "10.5"},
+		{token.SET, "SET"},
+		{token.IDENT, "a"},
+		{token.EQ, "="},
+		{token.TRUE, "TRUE"},
+		{token.COMMA, ","},
+		{token.IDENT, "b"},
+		{token.EQ, "="},
+		{token.FALSE, "FALSE"},
+		{token.COMMA, ","},
+		{token.IDENT, "c"},
+		{token.EQ, "="},
+		{token.NULL, "NULL"},
+		{token.ORDER, "ORDER"},
+		{token.BY, "BY"},
+		{token.IDENT, "price"},
+		{token.ASC, "ASC"},
+		{token.COMMA, ","},
+		{token.IDENT, "name"},
+		{token.DESC, "DESC"},
+		{token.AUTHENTICATE, "AUTHENTICATE"},
+		{token.AT, "AT"},
+		{token.STRING, "\"auth.com\""},
+		{token.SUBMIT, "SUBMIT"},
+		{token.FORM, "FORM"},
+		{token.WITH, "WITH"},
+		{token.LPAREN, "("},
+		{token.IDENT, "user"},
+		{token.EQ, "="},
+		{token.STRING, "\"admin\""},
+		{token.COMMA, ","},
+		{token.IDENT, "pass"},
+		{token.EQ, "="},
+		{token.STRING, "'1234'"},
+		{token.RPAREN, ")"},
+		{token.COMMENT, "-- this is a line comment\n"},
+		{token.BLOCK_COMMENT, "/* this is a /* nested */ block comment */"},
+		{token.BANG, "!"},
+		{token.ASTERISK, "*"},
+		{token.SLASH, "/"},
 		{token.PLUS, "+"},
-		{token.IDENTIFIER, "b"},
-		{token.CASE, "case"},
-		{token.IDENTIFIER, "x"},
-		{token.OF, "of"},
-		{token.PIPE, "|"},
-		{token.INTEGER, "1"},
-		{token.DOUBLE_ARROW, "=>"},
-		{token.STRING, "\"one\""},
-		{token.PIPE, "|"},
-		{token.IDENTIFIER, "_"},
-		{token.DOUBLE_ARROW, "=>"},
-		{token.STRING, "\"other\""},
+		{token.MINUS, "-"},
+		{token.LT, "<"},
+		{token.GT, ">"},
+		{token.LTE, "<="},
+		{token.GTE, ">="},
+		{token.NOT_EQ, "!="},
+		{token.EQ, "="},
+		{token.DOT, "."},
+		{token.SEMICOLON, ";"},
+		{token.COMMA, ","},
+		{token.LPAREN, "("},
+		{token.RPAREN, ")"},
+		{token.INT, "123"},
+		{token.FLOAT, "45.67"},
+		{token.IDENT, "_ident123"},
 		{token.EOF, ""},
 	}
 
@@ -183,8 +100,8 @@ case x of
 		tok := <-tokens
 
 		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q, literal=%q",
+				i, tt.expectedType, tok.Type, tok.Literal)
 		}
 
 		if tok.Literal != tt.expectedLiteral {
@@ -198,27 +115,27 @@ func TestLexerErrors(t *testing.T) {
 	tests := []struct {
 		name          string
 		input         string
-		expectedError token.TokenType
+		expectedError string
 	}{
 		{
-			name:          "Unterminated String",
+			name:          "Unterminated Double Quote String",
 			input:         `"this string never ends`,
-			expectedError: token.ILLEGAL,
+			expectedError: "Missing closing quote on string",
 		},
 		{
-			name:          "Invalid Char Syntax",
-			input:         `#i`,
-			expectedError: token.ILLEGAL,
+			name:          "Unterminated Single Quote String",
+			input:         `'this string never ends`,
+			expectedError: "Missing closing quote on string",
 		},
 		{
-			name:          "Unterminated Char",
-			input:         `#"c`,
-			expectedError: token.ILLEGAL,
+			name:          "Unterminated Block Comment",
+			input:         `/* this is a /* nested */ comment that never ends`,
+			expectedError: "Missing closing block comment",
 		},
 		{
-			name:          "Invalid Negative Number",
-			input:         `~a`,
-			expectedError: token.ILLEGAL,
+			name:          "Illegal Character",
+			input:         `SELECT @ FROM`,
+			expectedError: "illegal character U+0040 '@'",
 		},
 	}
 
@@ -230,6 +147,9 @@ func TestLexerErrors(t *testing.T) {
 			for tok := range tokens {
 				if tok.Type == token.ILLEGAL {
 					foundIllegal = true
+					if tok.Literal != tt.expectedError {
+						t.Errorf("Expected error message %q, but got %q", tt.expectedError, tok.Literal)
+					}
 					break
 				}
 				if tok.Type == token.EOF {
