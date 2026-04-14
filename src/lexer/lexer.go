@@ -1,6 +1,6 @@
 package lexer
 
-import "scanner/token"
+import "scql/token"
 import "unicode/utf8"
 import "strings"
 import "fmt"

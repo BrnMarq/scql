@@ -1,6 +1,6 @@
 package lexer
 
-import "scanner/token"
+import "scql/token"
 import "unicode"
 
 func lexStart(l *Lexer) stateFn {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"scanner/repl"
+	"scql/repl"
 )
 
 func main() {

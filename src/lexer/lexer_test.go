@@ -1,7 +1,7 @@
 package lexer
 
 import (
-	"scanner/token"
+	"scql/token"
 	"testing"
 )
 

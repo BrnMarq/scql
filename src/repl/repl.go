@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"scanner/lexer"
+	"scql/lexer"
 )
 
 const PROMPT = ">> "
