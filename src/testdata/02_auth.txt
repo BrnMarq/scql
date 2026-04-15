@@ -1,0 +1,6 @@
+AUTHENTICATE AT "https://auth.example.com/login"
+SUBMIT FORM WITH (
+    username = "admin",
+    password = "supersecretpassword123",
+    remember_me = TRUE
+);

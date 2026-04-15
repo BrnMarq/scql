@@ -1,0 +1,6 @@
+SET
+    scraping_enabled = TRUE,
+    max_retries = 5,
+    timeout_seconds = 30.5,
+    proxy_url = NULL,
+    user_agent = "scql-bot/1.0";
