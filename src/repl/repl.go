@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"scql/ast"
 	"scql/lexer"
+	"scql/parser"
 )
 
 const PROMPT = ">> "
@@ -25,6 +27,7 @@ func Start(in io.Reader, out io.Writer) {
 			return
 		}
 
+		fmt.Fprintln(out, "--- Lexer Output ---")
 		_, tokens := lexer.Lex("Lexer", line)
 
 		for token := range tokens {
@@ -33,5 +36,27 @@ func Start(in io.Reader, out io.Writer) {
 			}
 			fmt.Fprintf(out, "{Type: %-15s Literal: %q}\n", token.Type, token.Literal)
 		}
+
+		fmt.Fprintln(out, "--- Parser Output ---")
+		_, parserTokens := lexer.Lex("Lexer", line)
+		p := parser.New(parserTokens)
+
+		program := p.ParseProgram()
+
+		if len(p.Errors()) != 0 {
+			printParserErrors(out, p.Errors())
+			continue
+		}
+
+		fmt.Fprintf(out, "Parsed String: %s\n", program.String())
+		fmt.Fprintf(out, "Raw AST:\n%s\n", ast.PrintTree(program, "", true))
 	}
+}
+
+func printParserErrors(out io.Writer, errors []string) {
+	fmt.Fprintf(out, "Parser Errors:\n")
+	for _, msg := range errors {
+		fmt.Fprintf(out, "\t%s\n", msg)
+	}
+	fmt.Fprintln(out)
 }
