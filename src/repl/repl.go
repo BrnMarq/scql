@@ -53,6 +53,39 @@ func Start(in io.Reader, out io.Writer) {
 	}
 }
 
+func Run(in io.Reader, out io.Writer) {
+	bytes, err := io.ReadAll(in)
+	if err != nil {
+		fmt.Fprintf(out, "Error reading input: %s\n", err)
+		return
+	}
+	input := string(bytes)
+
+	fmt.Fprintln(out, "--- Lexer Output ---")
+	_, tokens := lexer.Lex("Lexer", input)
+
+	for token := range tokens {
+		if token.Type == "EOF" {
+			break
+		}
+		fmt.Fprintf(out, "{Type: %-15s Literal: %q}\n", token.Type, token.Literal)
+	}
+
+	fmt.Fprintln(out, "\n--- Parser Output ---")
+	_, parserTokens := lexer.Lex("Lexer", input)
+	p := parser.New(parserTokens)
+
+	program := p.ParseProgram()
+
+	if len(p.Errors()) != 0 {
+		printParserErrors(out, p.Errors())
+		return
+	}
+
+	fmt.Fprintf(out, "Parsed String:\n%s\n\n", program.String())
+	fmt.Fprintf(out, "Raw AST:\n%s\n", ast.PrintTree(program, "", true))
+}
+
 func printParserErrors(out io.Writer, errors []string) {
 	fmt.Fprintf(out, "Parser Errors:\n")
 	for _, msg := range errors {
