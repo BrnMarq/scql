@@ -47,50 +47,6 @@ func (p *Program) String() string {
 }
 
 // Statements
-type LetStatement struct {
-	Token token.Token // the token.LET token
-	Name  *Identifier
-	Value Expression
-}
-
-func (ls *LetStatement) statementNode()       {}
-func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
-func (ls *LetStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(ls.TokenLiteral() + " ")
-	out.WriteString(ls.Name.String())
-	out.WriteString(" = ")
-
-	if ls.Value != nil {
-		out.WriteString(ls.Value.String())
-	}
-
-	out.WriteString(";")
-
-	return out.String()
-}
-
-type ReturnStatement struct {
-	Token       token.Token // the 'return' token
-	ReturnValue Expression
-}
-
-func (rs *ReturnStatement) statementNode()       {}
-func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
-func (rs *ReturnStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(rs.TokenLiteral() + " ")
-
-	if rs.ReturnValue != nil {
-		out.WriteString(rs.ReturnValue.String())
-	}
-
-	out.WriteString(";")
-
-	return out.String()
-}
 
 type ExpressionStatement struct {
 	Token      token.Token // the first token of the expression
@@ -106,19 +62,119 @@ func (es *ExpressionStatement) String() string {
 	return ""
 }
 
-type BlockStatement struct {
-	Token      token.Token // the { token
-	Statements []Statement
+type OrderExpression struct {
+	Token token.Token // ASC or DESC token
+	Field Expression
+	Order string
 }
 
-func (bs *BlockStatement) statementNode()       {}
-func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
-func (bs *BlockStatement) String() string {
+func (oe *OrderExpression) expressionNode()      {}
+func (oe *OrderExpression) TokenLiteral() string { return oe.Token.Literal }
+func (oe *OrderExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(oe.Field.String())
+	out.WriteString(" ")
+	out.WriteString(oe.Order)
+	return out.String()
+}
+
+type SelectStatement struct {
+	Token  token.Token // the 'SELECT' token
+	Fields []Expression
+	From   Expression
+	Where  Expression
+	Order  []*OrderExpression
+}
+
+func (ss *SelectStatement) statementNode()       {}
+func (ss *SelectStatement) TokenLiteral() string { return ss.Token.Literal }
+func (ss *SelectStatement) String() string {
 	var out bytes.Buffer
 
-	for _, s := range bs.Statements {
-		out.WriteString(s.String())
+	out.WriteString(ss.TokenLiteral() + " ")
+
+	fields := []string{}
+	for _, f := range ss.Fields {
+		fields = append(fields, f.String())
 	}
+	out.WriteString(strings.Join(fields, ", "))
+
+	if ss.From != nil {
+		out.WriteString(" FROM ")
+		out.WriteString(ss.From.String())
+	}
+
+	if ss.Where != nil {
+		out.WriteString(" WHERE ")
+		out.WriteString(ss.Where.String())
+	}
+
+	if len(ss.Order) > 0 {
+		out.WriteString(" ORDER BY ")
+		orderFields := []string{}
+		for _, of := range ss.Order {
+			orderFields = append(orderFields, of.String())
+		}
+		out.WriteString(strings.Join(orderFields, ", "))
+	}
+	out.WriteString(";")
+
+	return out.String()
+}
+
+type AuthenticateStatement struct {
+	Token      token.Token // the 'AUTHENTICATE' token
+	At         Expression
+	SubmitForm bool
+	WithParams []Expression
+}
+
+func (as *AuthenticateStatement) statementNode()       {}
+func (as *AuthenticateStatement) TokenLiteral() string { return as.Token.Literal }
+func (as *AuthenticateStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(as.TokenLiteral() + " AT ")
+	if as.At != nil {
+		out.WriteString(as.At.String())
+	}
+
+	if as.SubmitForm {
+		out.WriteString(" SUBMIT FORM")
+	}
+
+	if len(as.WithParams) > 0 {
+		out.WriteString(" WITH (")
+		params := []string{}
+		for _, p := range as.WithParams {
+			params = append(params, p.String())
+		}
+		out.WriteString(strings.Join(params, ", "))
+		out.WriteString(")")
+	}
+	out.WriteString(";")
+
+	return out.String()
+}
+
+type SetStatement struct {
+	Token       token.Token // the 'SET' token
+	Assignments []Expression
+}
+
+func (ss *SetStatement) statementNode()       {}
+func (ss *SetStatement) TokenLiteral() string { return ss.Token.Literal }
+func (ss *SetStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ss.TokenLiteral() + " ")
+
+	assignments := []string{}
+	for _, a := range ss.Assignments {
+		assignments = append(assignments, a.String())
+	}
+	out.WriteString(strings.Join(assignments, ", "))
+	out.WriteString(";")
 
 	return out.String()
 }
@@ -150,6 +206,32 @@ type IntegerLiteral struct {
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+
+type FloatLiteral struct {
+	Token token.Token
+	Value float64
+}
+
+func (fl *FloatLiteral) expressionNode()      {}
+func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (sl *StringLiteral) expressionNode()      {}
+func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *StringLiteral) String() string       { return sl.Token.Literal }
+
+type NullLiteral struct {
+	Token token.Token
+}
+
+func (nl *NullLiteral) expressionNode()      {}
+func (nl *NullLiteral) TokenLiteral() string { return nl.Token.Literal }
+func (nl *NullLiteral) String() string       { return nl.Token.Literal }
 
 type PrefixExpression struct {
 	Token    token.Token // The prefix token, e.g. !
@@ -191,59 +273,9 @@ func (oe *InfixExpression) String() string {
 	return out.String()
 }
 
-type IfExpression struct {
-	Token       token.Token // The 'if' token
-	Condition   Expression
-	Consequence *BlockStatement
-	Alternative *BlockStatement
-}
-
-func (ie *IfExpression) expressionNode()      {}
-func (ie *IfExpression) TokenLiteral() string { return ie.Token.Literal }
-func (ie *IfExpression) String() string {
-	var out bytes.Buffer
-
-	out.WriteString("if")
-	out.WriteString(ie.Condition.String())
-	out.WriteString(" ")
-	out.WriteString(ie.Consequence.String())
-
-	if ie.Alternative != nil {
-		out.WriteString("else ")
-		out.WriteString(ie.Alternative.String())
-	}
-
-	return out.String()
-}
-
-type FunctionLiteral struct {
-	Token      token.Token // The 'fn' token
-	Parameters []*Identifier
-	Body       *BlockStatement
-}
-
-func (fl *FunctionLiteral) expressionNode()      {}
-func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
-func (fl *FunctionLiteral) String() string {
-	var out bytes.Buffer
-
-	params := []string{}
-	for _, p := range fl.Parameters {
-		params = append(params, p.String())
-	}
-
-	out.WriteString(fl.TokenLiteral())
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
-	out.WriteString(fl.Body.String())
-
-	return out.String()
-}
-
 type CallExpression struct {
 	Token     token.Token // The '(' token
-	Function  Expression  // Identifier or FunctionLiteral
+	Function  Expression  // Identifier
 	Arguments []Expression
 }
 
