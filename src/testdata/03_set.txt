@@ -1,6 +1,5 @@
 SET
-    scraping_enabled = TRUE,
-    max_retries = 5,
-    timeout_seconds = 30.5,
-    proxy_url = NULL,
-    user_agent = "scql-bot/1.0";
+    "#search-input" = "web scraping tools",
+    ".category-dropdown" = "software",
+    "input[name='agree_terms']" = TRUE,
+    "#promo-code" = NULL;
