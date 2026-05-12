@@ -2,11 +2,14 @@ package repl
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"scql/ast"
+	"scql/evaluator"
 	"scql/lexer"
 	"scql/parser"
+	"scql/semantic"
 )
 
 const PROMPT = ">> "
@@ -50,6 +53,31 @@ func Start(in io.Reader, out io.Writer) {
 
 		fmt.Fprintf(out, "Parsed String: %s\n", program.String())
 		fmt.Fprintf(out, "Raw AST:\n%s\n", ast.PrintTree(program, "", true))
+
+		fmt.Fprintln(out, "--- Semantic Analyzer Output ---")
+		analyzer := semantic.NewAnalyzer()
+		analyzer.Analyze(program)
+
+		if len(analyzer.Errors()) > 0 {
+			fmt.Fprintln(out, "Semantic Errors Found:")
+			for _, err := range analyzer.Errors() {
+				fmt.Fprintln(out, err.Error())
+			}
+			continue
+		} else {
+			fmt.Fprintln(out, "✅ Query is semantically valid!")
+		}
+
+		fmt.Fprintln(out, "--- Evaluator Output ---")
+		eval := evaluator.NewEvaluator()
+		results, err := eval.Evaluate(program)
+		if err != nil {
+			fmt.Fprintf(out, "Evaluator Error: %s\n", err)
+			continue
+		}
+
+		b, _ := json.MarshalIndent(results, "", "  ")
+		fmt.Fprintf(out, "%s\n", string(b))
 	}
 }
 
@@ -84,6 +112,31 @@ func Run(in io.Reader, out io.Writer) {
 
 	fmt.Fprintf(out, "Parsed String:\n%s\n\n", program.String())
 	fmt.Fprintf(out, "Raw AST:\n%s\n", ast.PrintTree(program, "", true))
+
+	fmt.Fprintln(out, "--- Semantic Analyzer Output ---")
+	analyzer := semantic.NewAnalyzer()
+	analyzer.Analyze(program)
+
+	if len(analyzer.Errors()) > 0 {
+		fmt.Fprintln(out, "Semantic Errors Found:")
+		for _, err := range analyzer.Errors() {
+			fmt.Fprintln(out, err.Error())
+		}
+		return
+	} else {
+		fmt.Fprintln(out, "✅ Query is semantically valid!")
+	}
+
+	fmt.Fprintln(out, "--- Evaluator Output ---")
+	eval := evaluator.NewEvaluator()
+	results, evalErr := eval.Evaluate(program)
+	if evalErr != nil {
+		fmt.Fprintf(out, "Evaluator Error: %s\n", evalErr)
+		return
+	}
+
+	b, _ := json.MarshalIndent(results, "", "  ")
+	fmt.Fprintf(out, "%s\n", string(b))
 }
 
 func printParserErrors(out io.Writer, errors []string) {
