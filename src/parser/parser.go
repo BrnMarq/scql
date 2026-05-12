@@ -10,6 +10,7 @@ import (
 const (
 	_ int = iota
 	LOWEST
+	ALIAS       // AS
 	OR          // OR
 	AND         // AND
 	EQUALS      // ==, =, !=
@@ -34,6 +35,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
+	token.AS:       ALIAS,
 }
 
 type (
@@ -86,6 +88,7 @@ func New(tokens chan token.Token) *Parser {
 	p.registerInfix(token.OR, p.parseInfixExpression)
 
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.AS, p.parseAliasExpression)
 
 	// Read two tokens, so curToken and peekToken are both set
 	p.nextToken()
@@ -432,6 +435,20 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 		return nil
 	}
 
+	return exp
+}
+
+func (p *Parser) parseAliasExpression(left ast.Expression) ast.Expression {
+	exp := &ast.AliasExpression{
+		Token: p.curToken,
+		Left:  left,
+	}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	exp.Alias = p.curToken.Literal
 	return exp
 }
 

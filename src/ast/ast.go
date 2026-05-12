@@ -296,3 +296,21 @@ func (ce *CallExpression) String() string {
 
 	return out.String()
 }
+
+type AliasExpression struct {
+	Token token.Token // The AS token
+	Left  Expression
+	Alias string
+}
+
+func (ae *AliasExpression) expressionNode()      {}
+func (ae *AliasExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *AliasExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ae.Left.String())
+	out.WriteString(" AS ")
+	out.WriteString(ae.Alias)
+
+	return out.String()
+}
