@@ -111,6 +111,46 @@ func TestLexer_NextToken(t *testing.T) {
 	}
 }
 
+func TestLexer_LineAndColumnTracking(t *testing.T) {
+	input := "SELECT *\nFROM table\nWHERE x = 1"
+	
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+		expectedLine    int
+		expectedColumn  int
+	}{
+		{token.SELECT, "SELECT", 1, 1},
+		{token.ASTERISK, "*", 1, 8},
+		{token.FROM, "FROM", 2, 1},
+		{token.IDENT, "table", 2, 6},
+		{token.WHERE, "WHERE", 3, 1},
+		{token.IDENT, "x", 3, 7},
+		{token.EQ, "=", 3, 9},
+		{token.INT, "1", 3, 11},
+		{token.EOF, "", 3, 12}, // EOF occurs after '1' at col 12
+	}
+	
+	_, tokens := Lex("test", input)
+	
+	for i, tt := range tests {
+		tok := <-tokens
+		
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q", i, tt.expectedType, tok.Type)
+		}
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q", i, tt.expectedLiteral, tok.Literal)
+		}
+		if tok.Line != tt.expectedLine {
+			t.Fatalf("tests[%d] - line wrong. expected=%d, got=%d, lit=%q", i, tt.expectedLine, tok.Line, tok.Literal)
+		}
+		if tok.Column != tt.expectedColumn {
+			t.Fatalf("tests[%d] - column wrong. expected=%d, got=%d, lit=%q", i, tt.expectedColumn, tok.Column, tok.Literal)
+		}
+	}
+}
+
 func TestLexerErrors(t *testing.T) {
 	tests := []struct {
 		name          string
