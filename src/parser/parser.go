@@ -198,6 +198,12 @@ func (p *Parser) parseSelectStatement() *ast.SelectStatement {
 		stmt.Where = p.parseExpression(LOWEST)
 	}
 
+	if p.peekTokenIs(token.ROWS) {
+		p.nextToken() // to ROWS
+		p.nextToken() // past ROWS
+		stmt.Rows = p.parseExpression(LOWEST)
+	}
+
 	if p.peekTokenIs(token.ORDER) {
 		p.nextToken() // to ORDER
 		if !p.expectPeek(token.BY) {

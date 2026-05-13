@@ -84,6 +84,7 @@ type SelectStatement struct {
 	From   Expression
 	Where  Expression
 	Order  []*OrderExpression
+	Rows   Expression
 }
 
 func (ss *SelectStatement) statementNode()       {}
@@ -107,6 +108,11 @@ func (ss *SelectStatement) String() string {
 	if ss.Where != nil {
 		out.WriteString(" WHERE ")
 		out.WriteString(ss.Where.String())
+	}
+
+	if ss.Rows != nil {
+		out.WriteString(" ROWS ")
+		out.WriteString(ss.Rows.String())
 	}
 
 	if len(ss.Order) > 0 {

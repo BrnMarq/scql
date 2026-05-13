@@ -47,6 +47,7 @@ const (
 	FROM  = "FROM"
 	WHERE = "WHERE"
 	SET   = "SET"
+	ROWS  = "ROWS"
 
 	// Union and Intersection operators
 	OR  = "OR"
@@ -84,6 +85,7 @@ var keywords = map[string]TokenType{
 	FROM:         "FROM",
 	WHERE:        "WHERE",
 	SET:          "SET",
+	ROWS:         "ROWS",
 	OR:           "OR",
 	AND:          "AND",
 	TRUE:         "TRUE",
