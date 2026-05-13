@@ -67,6 +67,9 @@ func printTreeWithLabel(node Node, prefix string, isLast bool, label string) str
 		if n.Where != nil {
 			children = append(children, &nodeGroup{name: "Where", children: []Node{n.Where}})
 		}
+		if n.Rows != nil {
+			children = append(children, &nodeGroup{name: "Rows", children: []Node{n.Rows}})
+		}
 		if len(n.Order) > 0 {
 			g := &nodeGroup{name: "OrderBy"}
 			for _, o := range n.Order {
@@ -141,6 +144,11 @@ func printTreeWithLabel(node Node, prefix string, isLast bool, label string) str
 		}
 		for i, child := range children {
 			sb.WriteString(printTreeWithLabel(child, prefix, i == len(children)-1, ""))
+		}
+	case *AliasExpression:
+		sb.WriteString(fmt.Sprintf("AliasExpression (AS %s)\n", n.Alias))
+		if n.Left != nil {
+			sb.WriteString(printTreeWithLabel(n.Left, prefix, true, ""))
 		}
 	case *Identifier:
 		sb.WriteString(fmt.Sprintf("Identifier (%s)\n", n.Value))
