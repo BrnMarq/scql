@@ -2,10 +2,13 @@ package evaluator
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"net/http"
+	"regexp"
 	"scql/ast"
+	"strconv"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // Evaluator evaluates the AST and performs the actual data fetching.
@@ -124,40 +127,231 @@ func (e *Evaluator) evaluateSelectStatement(s *ast.SelectStatement) (interface{}
 	}
 
 	// 4. Extract Data
-	// For simplicity, we assume we find multiple elements for each selector and group them into rows.
-	// A better way would be finding a "container" element first, but for now we find all elements.
-	// Actually, wait, it's better to get the maximum number of items found for any field.
-
-	columnData := make(map[string][]string)
-	maxLen := 0
-
-	for _, f := range fields {
-		var items []string
-		doc.Find(f.Selector).Each(func(i int, s *goquery.Selection) {
-			items = append(items, strings.TrimSpace(s.Text()))
-		})
-		columnData[f.Name] = items
-		if len(items) > maxLen {
-			maxLen = len(items)
-		}
-	}
-
-	// Zip columns into rows
 	var rows []map[string]interface{}
-	for i := 0; i < maxLen; i++ {
-		row := make(map[string]interface{})
+
+	if s.Rows != nil {
+		// Scoped extraction
+		var rowsSelector string
+		if rowStr, ok := s.Rows.(*ast.StringLiteral); ok {
+			rowsSelector = stripQuotes(rowStr.Value)
+		} else if rowIdent, ok := s.Rows.(*ast.Identifier); ok {
+			rowsSelector = rowIdent.Value
+		} else {
+			return nil, fmt.Errorf("invalid ROWS clause: must be a string selector")
+		}
+
+		doc.Find(rowsSelector).Each(func(i int, sel *goquery.Selection) {
+			row := make(map[string]interface{})
+
+			for _, f := range fields {
+				var fieldSel *goquery.Selection
+				if strings.HasPrefix(f.Selector, "+ ") {
+					// Select next sibling and search within it
+					siblingSel := strings.TrimSpace(strings.TrimPrefix(f.Selector, "+"))
+					
+					// Split sibling selector from the child selector if any
+					// Example: "+ tr .score" -> sibling is "tr", child is ".score"
+					parts := strings.SplitN(siblingSel, " ", 2)
+					if len(parts) == 2 {
+						fieldSel = sel.NextFiltered(parts[0]).Find(parts[1])
+					} else {
+						// e.g. "+ .subline"
+						fieldSel = sel.NextFiltered(parts[0])
+					}
+				} else {
+					fieldSel = sel.Find(f.Selector)
+				}
+
+				if fieldSel.Length() > 0 {
+					val := strings.TrimSpace(fieldSel.First().Text())
+					row[f.Name] = val
+				} else {
+					row[f.Name] = nil
+				}
+			}
+			
+			rows = append(rows, row)
+		})
+	} else {
+		// Unscoped (legacy) extraction using zipping
+		columnData := make(map[string][]string)
+		maxLen := 0
+
 		for _, f := range fields {
-			if i < len(columnData[f.Name]) {
-				row[f.Name] = columnData[f.Name][i]
-			} else {
-				row[f.Name] = nil
+			var items []string
+			doc.Find(f.Selector).Each(func(i int, s *goquery.Selection) {
+				items = append(items, strings.TrimSpace(s.Text()))
+			})
+			columnData[f.Name] = items
+			if len(items) > maxLen {
+				maxLen = len(items)
 			}
 		}
-		rows = append(rows, row)
+
+		for i := 0; i < maxLen; i++ {
+			row := make(map[string]interface{})
+			for _, f := range fields {
+				if i < len(columnData[f.Name]) {
+					row[f.Name] = columnData[f.Name][i]
+				} else {
+					row[f.Name] = nil
+				}
+			}
+			rows = append(rows, row)
+		}
 	}
 
-	// 5. WHERE clause (Simplified for now)
-	// We can implement actual AST evaluation for WHERE later.
+	// 5. WHERE clause
+	if s.Where != nil {
+		var filteredRows []map[string]interface{}
+		for _, row := range rows {
+			ok, err := e.evaluateWhere(s.Where, row)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				filteredRows = append(filteredRows, row)
+			}
+		}
+		rows = filteredRows
+	}
 
 	return rows, nil
+}
+
+func (e *Evaluator) evaluateWhere(exp ast.Expression, row map[string]interface{}) (bool, error) {
+	result, err := e.evaluateExpression(exp, row)
+	if err != nil {
+		return false, err
+	}
+	return isTruthy(result), nil
+}
+
+func (e *Evaluator) evaluateExpression(exp ast.Expression, row map[string]interface{}) (interface{}, error) {
+	switch node := exp.(type) {
+	case *ast.Identifier:
+		if val, ok := row[node.Value]; ok {
+			return val, nil
+		}
+		// If not found in row, it could be a raw CSS selector string
+		return node.Value, nil
+	case *ast.StringLiteral:
+		return node.Value, nil
+	case *ast.IntegerLiteral:
+		return node.Value, nil
+	case *ast.FloatLiteral:
+		return node.Value, nil
+	case *ast.Boolean:
+		return node.Value, nil
+	case *ast.NullLiteral:
+		return nil, nil
+	case *ast.InfixExpression:
+		left, err := e.evaluateExpression(node.Left, row)
+		if err != nil {
+			return nil, err
+		}
+		right, err := e.evaluateExpression(node.Right, row)
+		if err != nil {
+			return nil, err
+		}
+		return evaluateInfix(node.Operator, left, right)
+	case *ast.PrefixExpression:
+		right, err := e.evaluateExpression(node.Right, row)
+		if err != nil {
+			return nil, err
+		}
+		return evaluatePrefix(node.Operator, right)
+	}
+	return nil, fmt.Errorf("unsupported expression type in WHERE: %T", exp)
+}
+
+func isTruthy(obj interface{}) bool {
+	if obj == nil {
+		return false
+	}
+	switch v := obj.(type) {
+	case bool:
+		return v
+	case int64:
+		return v != 0
+	case float64:
+		return v != 0.0
+	case string:
+		return v != ""
+	}
+	return true
+}
+
+var nonNumericRegex = regexp.MustCompile(`[^\d\.\-]+`)
+
+func coerceToFloat(obj interface{}) (float64, error) {
+	switch v := obj.(type) {
+	case int64:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case string:
+		// Strip non-numeric
+		cleanStr := nonNumericRegex.ReplaceAllString(v, "")
+		if cleanStr == "" {
+			return 0, fmt.Errorf("cannot coerce string to float: %s", v)
+		}
+		f, err := strconv.ParseFloat(cleanStr, 64)
+		if err != nil {
+			return 0, fmt.Errorf("cannot coerce string to float: %s", v)
+		}
+		return f, nil
+	}
+	return 0, fmt.Errorf("cannot coerce to float: %v", obj)
+}
+
+func evaluateInfix(operator string, left, right interface{}) (interface{}, error) {
+	switch operator {
+	case "AND":
+		return isTruthy(left) && isTruthy(right), nil
+	case "OR":
+		return isTruthy(left) || isTruthy(right), nil
+	case "==", "=":
+		lFloat, lErr := coerceToFloat(left)
+		rFloat, rErr := coerceToFloat(right)
+		if lErr == nil && rErr == nil {
+			return lFloat == rFloat, nil
+		}
+		return left == right, nil
+	case "!=":
+		lFloat, lErr := coerceToFloat(left)
+		rFloat, rErr := coerceToFloat(right)
+		if lErr == nil && rErr == nil {
+			return lFloat != rFloat, nil
+		}
+		return left != right, nil
+	case ">", "<", ">=", "<=":
+		l, err1 := coerceToFloat(left)
+		r, err2 := coerceToFloat(right)
+		if err1 != nil {
+			return false, err1
+		}
+		if err2 != nil {
+			return false, err2
+		}
+		switch operator {
+		case ">":
+			return l > r, nil
+		case "<":
+			return l < r, nil
+		case ">=":
+			return l >= r, nil
+		case "<=":
+			return l <= r, nil
+		}
+	}
+	return nil, fmt.Errorf("unsupported operator: %s", operator)
+}
+
+func evaluatePrefix(operator string, right interface{}) (interface{}, error) {
+	switch operator {
+	case "!":
+		return !isTruthy(right), nil
+	}
+	return nil, fmt.Errorf("unsupported prefix operator: %s", operator)
 }

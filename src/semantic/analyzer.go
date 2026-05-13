@@ -114,6 +114,14 @@ func (a *Analyzer) analyzeSelectStatement(s *ast.SelectStatement) {
 		}
 	}
 
+	// Analyze ROWS
+	if s.Rows != nil {
+		rowsType := a.analyzeExpression(s.Rows)
+		if rowsType != TypeString && rowsType != TypeUnknown {
+			a.reportError(s.Token, "ROWS clause must evaluate to a string CSS selector, got %s", rowsType)
+		}
+	}
+
 	// Analyze ORDER BY
 	for _, order := range s.Order {
 		a.analyzeExpression(order.Field)
@@ -198,8 +206,8 @@ func (a *Analyzer) analyzeExpression(exp ast.Expression) Type {
 
 		switch e.Operator {
 		case "+", "-", "*", "/":
-			if !isNumeric(leftType) || !isNumeric(rightType) {
-				a.reportError(e.Token, "type mismatch: operator '%s' requires numeric types, got %s and %s", e.Operator, leftType, rightType)
+			if !isNumericOrString(leftType) || !isNumericOrString(rightType) {
+				a.reportError(e.Token, "type mismatch: operator '%s' requires numeric types (or coercible strings), got %s and %s", e.Operator, leftType, rightType)
 				return TypeUnknown
 			}
 			if leftType == TypeFloat || rightType == TypeFloat {
@@ -207,14 +215,14 @@ func (a *Analyzer) analyzeExpression(exp ast.Expression) Type {
 			}
 			return TypeInt
 		case "<", ">", "<=", ">=":
-			if !isNumeric(leftType) || !isNumeric(rightType) {
-				a.reportError(e.Token, "type mismatch: operator '%s' requires numeric types, got %s and %s", e.Operator, leftType, rightType)
+			if !isNumericOrString(leftType) || !isNumericOrString(rightType) {
+				a.reportError(e.Token, "type mismatch: operator '%s' requires numeric types (or coercible strings), got %s and %s", e.Operator, leftType, rightType)
 			}
 			return TypeBoolean
 		case "==", "!=", "=":
 			if leftType != rightType {
-				// Allow comparing anything to NULL
-				if leftType != TypeNull && rightType != TypeNull {
+				// Allow comparing anything to NULL, and strings to numbers
+				if leftType != TypeNull && rightType != TypeNull && !(isNumericOrString(leftType) && isNumericOrString(rightType)) {
 					a.reportError(e.Token, "type mismatch: cannot compare %s and %s", leftType, rightType)
 				}
 			}
@@ -242,4 +250,8 @@ func (a *Analyzer) analyzeExpression(exp ast.Expression) Type {
 
 func isNumeric(t Type) bool {
 	return t == TypeInt || t == TypeFloat
+}
+
+func isNumericOrString(t Type) bool {
+	return isNumeric(t) || t == TypeString
 }
