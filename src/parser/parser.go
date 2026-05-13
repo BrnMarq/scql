@@ -192,25 +192,23 @@ func (p *Parser) parseSelectStatement() *ast.SelectStatement {
 		stmt.From = p.parseExpression(LOWEST)
 	}
 
-	if p.peekTokenIs(token.WHERE) {
-		p.nextToken() // to WHERE
-		p.nextToken() // past WHERE
-		stmt.Where = p.parseExpression(LOWEST)
-	}
-
-	if p.peekTokenIs(token.ROWS) {
-		p.nextToken() // to ROWS
-		p.nextToken() // past ROWS
-		stmt.Rows = p.parseExpression(LOWEST)
-	}
-
-	if p.peekTokenIs(token.ORDER) {
-		p.nextToken() // to ORDER
-		if !p.expectPeek(token.BY) {
-			return nil
+	for p.peekTokenIs(token.WHERE) || p.peekTokenIs(token.ROWS) || p.peekTokenIs(token.ORDER) {
+		if p.peekTokenIs(token.WHERE) {
+			p.nextToken() // to WHERE
+			p.nextToken() // past WHERE
+			stmt.Where = p.parseExpression(LOWEST)
+		} else if p.peekTokenIs(token.ROWS) {
+			p.nextToken() // to ROWS
+			p.nextToken() // past ROWS
+			stmt.Rows = p.parseExpression(LOWEST)
+		} else if p.peekTokenIs(token.ORDER) {
+			p.nextToken() // to ORDER
+			if !p.expectPeek(token.BY) {
+				return nil
+			}
+			p.nextToken() // past BY
+			stmt.Order = p.parseOrderExpressions()
 		}
-		p.nextToken() // past BY
-		stmt.Order = p.parseOrderExpressions()
 	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
