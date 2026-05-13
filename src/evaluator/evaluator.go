@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"scql/ast"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -214,6 +215,52 @@ func (e *Evaluator) evaluateSelectStatement(s *ast.SelectStatement) (interface{}
 			}
 		}
 		rows = filteredRows
+	}
+
+	// 6. ORDER BY clause
+	if len(s.Order) > 0 {
+		var sortErr error
+		sort.SliceStable(rows, func(i, j int) bool {
+			for _, orderExp := range s.Order {
+				valI, errI := e.evaluateExpression(orderExp.Field, rows[i])
+				if errI != nil {
+					sortErr = errI
+					return false
+				}
+				valJ, errJ := e.evaluateExpression(orderExp.Field, rows[j])
+				if errJ != nil {
+					sortErr = errJ
+					return false
+				}
+
+				if valI == valJ {
+					continue
+				}
+
+				// Try numeric comparison first
+				numI, errNumI := coerceToFloat(valI)
+				numJ, errNumJ := coerceToFloat(valJ)
+
+				var less bool
+				if errNumI == nil && errNumJ == nil {
+					less = numI < numJ
+				} else {
+					// Fallback to string comparison
+					strI := fmt.Sprintf("%v", valI)
+					strJ := fmt.Sprintf("%v", valJ)
+					less = strI < strJ
+				}
+
+				if strings.ToUpper(orderExp.Order) == "DESC" {
+					return !less && valI != valJ
+				}
+				return less
+			}
+			return false
+		})
+		if sortErr != nil {
+			return nil, sortErr
+		}
 	}
 
 	return rows, nil
