@@ -306,7 +306,7 @@ func coerceToFloat(obj interface{}) (float64, error) {
 }
 
 func evaluateInfix(operator string, left, right interface{}) (interface{}, error) {
-	switch operator {
+	switch strings.ToUpper(operator) {
 	case "AND":
 		return isTruthy(left) && isTruthy(right), nil
 	case "OR":
@@ -349,7 +349,7 @@ func evaluateInfix(operator string, left, right interface{}) (interface{}, error
 }
 
 func evaluatePrefix(operator string, right interface{}) (interface{}, error) {
-	switch operator {
+	switch strings.ToUpper(operator) {
 	case "!":
 		return !isTruthy(right), nil
 	}

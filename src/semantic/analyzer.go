@@ -183,7 +183,7 @@ func (a *Analyzer) analyzeExpression(exp ast.Expression) Type {
 
 	case *ast.PrefixExpression:
 		rightType := a.analyzeExpression(e.Right)
-		switch e.Operator {
+		switch strings.ToUpper(e.Operator) {
 		case "!":
 			if rightType != TypeBoolean && rightType != TypeUnknown {
 				a.reportError(e.Token, "operator '!' requires boolean operand, got %s", rightType)
@@ -204,7 +204,7 @@ func (a *Analyzer) analyzeExpression(exp ast.Expression) Type {
 			return TypeUnknown // Cascade the unknown type to prevent spamming errors
 		}
 
-		switch e.Operator {
+		switch strings.ToUpper(e.Operator) {
 		case "+", "-", "*", "/":
 			if !isNumericOrString(leftType) || !isNumericOrString(rightType) {
 				a.reportError(e.Token, "type mismatch: operator '%s' requires numeric types (or coercible strings), got %s and %s", e.Operator, leftType, rightType)
