@@ -1,0 +1,9 @@
+-- Prueba: Extracción relacional compleja usando el operador de hermandad (+)
+SELECT 
+    ".titleline > a" AS title, 
+    "+ tr .score" AS score, 
+    "+ tr .hnuser" AS author 
+FROM "news.ycombinator.com" 
+ROWS "tr.athing" 
+WHERE score > 100 
+ORDER BY score DESC;

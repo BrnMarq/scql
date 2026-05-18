@@ -1,4 +1,0 @@
-SELECT title, price, in_stock
-FROM "https://example.com/products"
-WHERE price < 50.00 AND (in_stock = TRUE OR category = 'sale')
-ORDER BY price ASC, title DESC;

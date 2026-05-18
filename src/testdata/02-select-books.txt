@@ -1,0 +1,9 @@
+-- Prueba: Extracción y ordenamiento numérico con coerción automática
+SELECT 
+    "h3 > a" AS title, 
+    ".price_color" AS price, 
+    ".instock.availability" AS status
+FROM "books.toscrape.com" 
+ROWS "article.product_pod" 
+WHERE price < 40.00 
+ORDER BY price ASC;

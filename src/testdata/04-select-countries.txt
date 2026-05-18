@@ -1,0 +1,10 @@
+-- Prueba: Evaluación matemática sobre texto sucio (coerción de strings numéricos con comas)
+SELECT 
+    ".country-name" AS name, 
+    ".country-capital" AS capital, 
+    ".country-population" AS population,
+    ".country-area" AS area
+FROM "scrapethissite.com/pages/simple/" 
+ROWS ".country" 
+WHERE population > 50000000 AND area > 1000000
+ORDER BY population DESC;

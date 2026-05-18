@@ -1,0 +1,9 @@
+-- Prueba: Filtrado condicional estricto por cadenas de texto
+SELECT 
+    ".text" AS quote, 
+    ".author" AS author, 
+    ".tags" AS tags
+FROM "quotes.toscrape.com" 
+ROWS ".quote" 
+WHERE author = "Albert Einstein" 
+ORDER BY quote ASC;
