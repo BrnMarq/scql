@@ -149,7 +149,7 @@ func (e *Evaluator) evaluateSelectStatement(s *ast.SelectStatement) (interface{}
 				if strings.HasPrefix(f.Selector, "+ ") {
 					// Select next sibling and search within it
 					siblingSel := strings.TrimSpace(strings.TrimPrefix(f.Selector, "+"))
-					
+
 					// Split sibling selector from the child selector if any
 					// Example: "+ tr .score" -> sibling is "tr", child is ".score"
 					parts := strings.SplitN(siblingSel, " ", 2)
@@ -170,7 +170,7 @@ func (e *Evaluator) evaluateSelectStatement(s *ast.SelectStatement) (interface{}
 					row[f.Name] = nil
 				}
 			}
-			
+
 			rows = append(rows, row)
 		})
 	} else {
@@ -283,7 +283,7 @@ func (e *Evaluator) evaluateExpression(exp ast.Expression, row map[string]interf
 		// If not found in row, it could be a raw CSS selector string
 		return node.Value, nil
 	case *ast.StringLiteral:
-		return node.Value, nil
+		return stripQuotes(node.Value), nil
 	case *ast.IntegerLiteral:
 		return node.Value, nil
 	case *ast.FloatLiteral:
@@ -359,6 +359,11 @@ func evaluateInfix(operator string, left, right interface{}) (interface{}, error
 	case "OR":
 		return isTruthy(left) || isTruthy(right), nil
 	case "==", "=":
+		if lStr, okImg := left.(string); okImg {
+			if rStr, ok2 := right.(string); ok2 {
+				return lStr == rStr, nil
+			}
+		}
 		lFloat, lErr := coerceToFloat(left)
 		rFloat, rErr := coerceToFloat(right)
 		if lErr == nil && rErr == nil {
